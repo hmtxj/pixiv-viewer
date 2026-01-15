@@ -1,0 +1,65 @@
+{
+  "name": "pixiv-viewer",
+  "version": "1.31.8",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "release": "bumpp package.json src/consts/index.js --all --no-tag",
+    "changelog": "git-cliff -o CHANGELOG.md",
+    "analyze": "vue-cli-service build --report",
+    "lint": "vue-cli-service lint",
+    "prerelease": "npm run changelog && git add ."
+  },
+  "dependencies": {
+    "@vant/touch-emulator": "1.4.0",
+    "@vueuse/core": "11.3.0",
+    "@vueuse/components": "11.3.0",
+    "axios": "0.30.2",
+    "core-js": "3.40.0",
+    "crypto-js": "4.2.0",
+    "dayjs": "1.11.13",
+    "gif.js": "0.2.0",
+    "jszip": "3.10.1",
+    "localforage": "1.10.0",
+    "lodash": "4.17.21",
+    "modern-mp4": "0.1.2",
+    "nprogress": "0.2.0",
+    "register-service-worker": "1.7.2",
+    "swiper": "5.4.5",
+    "ts-whammy": "1.1.5",
+    "vant": "2.12.54",
+    "vue": "2.7.16",
+    "vue-awesome-swiper": "4.1.1",
+    "vue-i18n": "8.28.2",
+    "vue-meta": "2.4.0",
+    "vue-router": "3.6.5",
+    "vuex": "3.6.2"
+  },
+  "devDependencies": {
+    "@rushstack/eslint-patch": "1.7.2",
+    "@types/crypto-js": "4.2.2",
+    "@types/gif.js": "0.2.5",
+    "@types/lodash": "4.17.15",
+    "@types/wicg-file-system-access": "2023.10.5",
+    "@vue/cli-plugin-babel": "5.0.8",
+    "@vue/cli-plugin-pwa": "5.0.8",
+    "@vue/cli-service": "5.0.8",
+    "@vue/eslint-config-standard": "8.0.1",
+    "babel-eslint": "10.1.0",
+    "babel-plugin-import": "1.13.8",
+    "eslint": "8.57.0",
+    "eslint-plugin-vue": "9.23.0",
+    "postcss-pxtorem": "5.1.1",
+    "stylus": "0.64.0",
+    "stylus-loader": "7.1.3",
+    "xml-loader": "1.2.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js",
+      "swiper",
+      "vue-demi"
+    ]
+  }
+}

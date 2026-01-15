@@ -1,0 +1,159 @@
+<template>
+  <div class="Home">
+    <div class="com_sel_tabs home-i-tabs">
+      <div class="home-title">
+        <img class="app-logo" src="/app-icon.png" alt="Logo">
+        <h1 class="app-title">Pixiv Viewer</h1>
+      </div>
+      <div class="sel-tabs flex">
+        <div v-t="'common.illust'" class="com_sel_tab cur"></div>
+        <div v-t="'common.manga'" class="com_sel_tab" @click="$router.replace('/home_manga')"></div>
+        <div v-t="'common.novel'" class="com_sel_tab" @click="$router.replace('/home_novel')"></div>
+        <div v-t="'dZ93cWZJ03hu5emsVwgjA'" class="com_sel_tab" @click="$router.push('/collection')"></div>
+        <!-- <div v-t="'g4JWYmBbfeweCBkRSgGNw'" class="com_sel_tab" @click="$router.push('/lives')"></div> -->
+      </div>
+      <div class="home-search">
+        <van-search v-model="term" :placeholder="placeholder" shape="round" @search="onSearch" />
+      </div>
+    </div>
+    <div class="home-i">
+      <div class="rec-cards">
+        <RankCard />
+        <SpotlightCard />
+      </div>
+      <template v-if="isAppLogin">
+        <div class="rec-cards">
+          <DiscoveryCard />
+          <RandomIllustCard />
+        </div>
+        <RecommendIllustHome />
+      </template>
+      <Recomm4U v-else-if="isWebLogin" />
+      <template v-else>
+        <div v-if="isSelfHibi" class="rec-cards">
+          <DiscoveryCard />
+          <RecommendIllustCard />
+        </div>
+        <RandomIllust />
+        <LatestIllustCard v-if="isSelfHibi && notVirtualList" />
+      </template>
+    </div>
+  </div>
+</template>
+
+<script>
+import _ from '@/lib/lodash'
+import RankCard from './components/RankCard.vue'
+import SpotlightCard from '../Spotlights/SpotlightCard.vue'
+import DiscoveryCard from '../Discovery/DiscoveryCard.vue'
+import RecommendIllustCard from '../Discovery/RecommendIllustCard.vue'
+import RecommendIllustHome from '../Discovery/RecommendIllustHome.vue'
+import RandomIllust from './components/RandomIllust.vue'
+import RandomIllustCard from './components/RandomIllustCard.vue'
+import LatestIllustCard from '../Discovery/LatestIllustCard.vue'
+import Recomm4U from './components/Recomm4U.vue'
+import { notSelfHibiApi } from '@/consts'
+import { existsSessionId } from '@/api/user'
+import api from '@/api'
+import store from '@/store'
+
+const isWebLogin = existsSessionId()
+
+export default {
+  name: 'HomeIllust',
+  components: {
+    RankCard,
+    SpotlightCard,
+    DiscoveryCard,
+    RecommendIllustCard,
+    RecommendIllustHome,
+    RandomIllust,
+    RandomIllustCard,
+    LatestIllustCard,
+    Recomm4U,
+  },
+  data() {
+    return {
+      isSelfHibi: !notSelfHibiApi,
+      isAppLogin: window.APP_CONFIG.useLocalAppApi,
+      isWebLogin,
+      term: '',
+      tags: [],
+      placeholder: '',
+    }
+  },
+  head() {
+    return {
+      title: `Pixiv Viewer - ${this.$t('setting.app_desc')}`,
+      titleTemplate: null,
+    }
+  },
+  computed: {
+    notVirtualList() {
+      return !store.state.appSetting.wfType.startsWith('Virtual')
+    },
+  },
+  activated() {
+    this.placeholder = _.sample(this.tags)
+  },
+  mounted() {
+    this.initSearch()
+  },
+  methods: {
+    async initSearch() {
+      const res = await api.getTags()
+      if (res.status === 0) {
+        this.tags = res.data.map(e => e.name).filter(e => !this.$store.state.blockTags.includes(e))
+        this.placeholder = _.sample(this.tags)
+      }
+    },
+    onSearch() {
+      const id = this.term.match(/https?:\/\/.+\/artworks\/(\d+)/i)?.[1] || this.term.match(/^(\d{8,})$/)?.[1]
+      if (id) {
+        this.term = ''
+        this.$router.push(`/artworks/${id}`)
+        return
+      }
+      this.$router.push(`/search/${this.term || this.placeholder}`)
+    },
+  },
+}
+</script>
+
+<style lang="stylus">
+.rec-cards
+  display flex
+
+  .rank-card
+    flex 1
+    width 48%
+
+@media screen and (max-width: 767px)
+  .rec-cards
+    display block
+
+    .rank-card
+      width auto
+
+</style>
+<style lang="stylus" scoped>
+.home-i
+  position relative
+  z-index 2
+  padding-bottom 100px
+  background #fff
+
+  ::v-deep .cell .title
+    font-size 36px
+
+  ::v-deep .image-slide
+    background #f9ba48
+
+  ::v-deep .image-slide:not(:has(.d-loading))
+    background none
+
+  ::v-deep .svg-icon
+    margin-right 10px
+    vertical-align -0.15rem
+
+</style>

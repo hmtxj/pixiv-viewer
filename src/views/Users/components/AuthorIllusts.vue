@@ -1,0 +1,441 @@
+<template>
+  <div class="illusts">
+    <template v-if="showTitle">
+      <van-cell v-if="once" class="cell" :border="false" is-link @click="onClick()">
+        <template #title>
+          <span class="title">
+            {{ $t('user.art_title', [iTypeText]) }}
+            <span v-if="num" class="num">{{ $t('user.art_num', [num]) }}</span>
+          </span>
+        </template>
+      </van-cell>
+      <h3 v-else class="af_title">{{ $t('user.art_title', [authorName + iTypeText]) }}</h3>
+    </template>
+    <div v-if="iType == 'illust'" class="member-tags">
+      <template v-if="showR18TagFilter">
+        <div class="member-tag" style="background: #ed4675;color: #fff;" @click="setAgeFilter('R')">
+          <div class="member-tag-main">
+            <span>R-18</span>
+            <van-icon v-if="ageFilter == 'R'" class="member-tag-check" name="checked" />
+          </div>
+        </div>
+        <div class="member-tag" style="background: #375fd7;color: #fff;" @click="setAgeFilter('S')">
+          <div class="member-tag-main">
+            <span>全年龄</span>
+            <van-icon v-if="ageFilter == 'S'" class="member-tag-check" name="checked" />
+          </div>
+        </div>
+      </template>
+      <div v-for="t in memberTagsDisplay" :key="t.tag" class="member-tag" :style="t.style" @click="setSelTag(t.tag)">
+        <div class="member-tag-main">
+          <span>#{{ t.tag }}</span>
+          <template v-if="selTag">
+            <van-tag class="member-tag-cnt">{{ t.cnt }}</van-tag>
+            <van-icon class="member-tag-close" name="cross" />
+          </template>
+        </div>
+        <div v-if="t.tag_translation">{{ t.tag_translation }}</div>
+      </div>
+      <div
+        v-if="!selTag && memberTags.length > 20"
+        class="member-tag"
+        style="background: #efefef;color: #333;"
+        @click="showAllTags = true"
+      >
+        {{ $t('Tx35SIS0MBLD-pgz1XgXh') }}
+      </div>
+      <van-popup
+        v-model="showAllTags"
+        round
+        closeable
+        get-container="body"
+        style="width: 80vw;max-width: 10rem;height:60vh;overflow: hidden;"
+      >
+        <div v-if="showAllTags" style="height: 90%;margin-top: 0.7rem;overflow-y: auto;">
+          <div class="member-tags popup" style="padding: 0.3rem">
+            <div v-for="t in memberTags" :key="t.tag" class="member-tag" :style="t.style" @click="setSelTag(t.tag)">
+              <div class="member-tag-main">
+                <span>#{{ t.tag }}</span>
+                <van-tag class="member-tag-cnt" style="margin-right: 0;">{{ t.cnt }}</van-tag>
+              </div>
+              <div v-if="t.tag_translation">{{ t.tag_translation }}</div>
+            </div>
+          </div>
+        </div>
+      </van-popup>
+    </div>
+    <van-list
+      v-if="selTag"
+      v-model="loading"
+      :loading-text="$t('tips.loading')"
+      :finished="finished"
+      :finished-text="!once ? $t('tips.no_more') : ''"
+      :error.sync="error"
+      :offset="800"
+      :error-text="$t('tips.net_err')"
+      @load="getMemberArtwork()"
+    >
+      <wf-cont layout="Grid">
+        <ImageCard v-for="art in artList" :key="art.id" mode="all" :artwork="art" @click-card="toArtwork(art)" />
+      </wf-cont>
+    </van-list>
+    <ImageList
+      v-else
+      :list="artList"
+      :loading="loading"
+      :finished="finished"
+      :error="error"
+      :on-load-more="getMemberArtwork"
+      :van-list-props="{ 'finished-text': !once ? $t('tips.no_more') : '' }"
+    />
+  </div>
+</template>
+
+<script>
+import _ from '@/lib/lodash'
+import api from '@/api'
+import { generateRandomColor, getContrastingTextColor, sleep } from '@/utils'
+import ImageCard from '@/components/ImageCard.vue'
+import ImageList from '@/components/ImageList.vue'
+
+export default {
+  name: 'AuthorIllusts',
+  components: {
+    ImageCard,
+    ImageList,
+  },
+  props: {
+    id: {
+      type: Number,
+      required: true,
+    },
+    num: {
+      type: Number,
+    },
+    once: {
+      type: Boolean,
+      default: false,
+    },
+    iType: {
+      type: String,
+      default: 'illust',
+    },
+    notFromArtwork: {
+      type: Boolean,
+      default: true,
+    },
+    showTitle: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  data() {
+    return {
+      curPage: 1,
+      artList: [],
+      error: false,
+      loading: false,
+      finished: false,
+      memberTags: [],
+      selTag: '',
+      showAllTags: false,
+      tagArtsCount: 0,
+      ageFilter: '',
+    }
+  },
+  computed: {
+    authorName() {
+      const n = this.artList[0]?.author.name
+      return n ? `${n} - ` : ''
+    },
+    iTypeText() {
+      const map = {
+        illust: this.$t('common.illust'),
+        manga: this.$t('common.manga'),
+      }
+      return map[this.iType]
+    },
+    memberTagsDisplay() {
+      if (this.selTag) return this.memberTags.filter(e => e.tag == this.selTag)
+      return this.memberTags.slice(0, 20)
+    },
+    showR18TagFilter() {
+      return window.APP_CONFIG.useLocalAppApi && this.$store.getters.isR18On
+    },
+  },
+  mounted() {
+    console.log('AuthorIllusts mounted:', this.iType)
+    this.init()
+  },
+  activated() {
+    console.log('this.notFromArtwork: ', this.notFromArtwork)
+    if (this.notFromArtwork) {
+      this.init()
+    }
+  },
+  methods: {
+    init() {
+      this.reset()
+      this.getMemberTags()
+      this.getMemberArtwork()
+    },
+    reset() {
+      this.resetList()
+      this.memberTags = []
+      this.selTag = ''
+      this.ageFilter = ''
+      this.showAllTags = false
+      this.tagArtsCount = 0
+    },
+    resetList() {
+      this.curPage = 1
+      this.error = false
+      this.finished = false
+      this.artList = []
+    },
+    setSelTag(tag) {
+      this.resetList()
+      this.showAllTags = false
+      if (tag == this.selTag) {
+        this.selTag = ''
+        this.tagArtsCount = 0
+        this.getMemberArtwork()
+        return
+      }
+      window.umami?.track('sel_user_tag')
+      this.selTag = tag
+      this.getMemberTagArtworks()
+    },
+    setAgeFilter(type) {
+      this.resetList()
+      if (type == this.ageFilter) {
+        this.ageFilter = ''
+        this.getMemberArtwork()
+        return
+      }
+      window.umami?.track('sel_user_age_filter', { type })
+      this.ageFilter = type
+      this.getMemberArtwork()
+    },
+    async getMemberTags() {
+      if (this.iType != 'illust') return
+      const res = await api.getMemberTags(this.id, this.$store.getters.isR18On)
+      if (res.status === 0) {
+        this.memberTags = res.data.map(e => ({ ...e, style: e.style || this.getTagStyle() }))
+      } else {
+        this.$toast({ message: res.msg })
+        this.memberTags = []
+      }
+    },
+    getMemberTagArtworks: _.throttle(async function () {
+      if (!this.id || this.iType != 'illust' || !this.selTag) return
+      this.loading = true
+      let newList = []
+      const res = await api.getMemberTagArtworks(this.id, this.selTag, this.curPage)
+      if (res.status === 0) {
+        newList = res.data.works
+
+        if (this.ageFilter == 'R') {
+          newList = newList.filter(e => e.x_restrict > 0)
+        }
+
+        if (this.ageFilter == 'S') {
+          newList = newList.filter(e => e.x_restrict == 0)
+        }
+
+        if (newList.length < 10) {
+          console.log('------------- sleep')
+          await sleep(800)
+        }
+
+        this.artList = _.uniqBy([
+          ...this.artList,
+          ...newList,
+        ], 'id')
+
+        this.loading = false
+
+        this.tagArtsCount += res.data.currLen
+        if (this.tagArtsCount >= res.data.total) {
+          this.finished = true
+          return
+        }
+
+        this.curPage++
+      } else {
+        this.$toast({
+          message: res.msg,
+        })
+        this.loading = false
+        this.error = true
+      }
+    }, 2500),
+    getMemberArtwork: _.throttle(async function () {
+      if (!this.id) return
+      if (this.selTag) return this.getMemberTagArtworks()
+      this.loading = true
+      let newList
+      const res = await api.getMemberArtwork(this.id, this.curPage, this.iType)
+      if (res.status === 0) {
+        newList = res.data
+
+        if (this.ageFilter == 'R') {
+          newList = newList.filter(e => e.x_restrict > 0)
+        }
+
+        if (this.ageFilter == 'S') {
+          newList = newList.filter(e => e.x_restrict == 0)
+        }
+
+        if (newList.length < 10) {
+          console.log('------------- sleep')
+          await sleep(800)
+        }
+
+        if (this.once) newList = newList.slice(0, 10)
+        this.artList = _.uniqBy([
+          ...this.artList,
+          ...newList,
+        ], 'id')
+
+        this.loading = false
+        this.curPage++
+        if (this.once || !newList.length) this.finished = true
+      } else {
+        this.$toast({
+          message: res.msg,
+        })
+        this.loading = false
+        this.error = true
+      }
+    }, 2500),
+    toArtwork(art) {
+      this.$store.dispatch('setGalleryList', this.artList)
+      this.$router.push({
+        name: 'Artwork',
+        params: { id: art.id, art },
+      })
+    },
+    onClick() {
+      this.$emit('onCilck')
+    },
+    getTagStyle() {
+      const background = generateRandomColor()
+      return {
+        background,
+        color: getContrastingTextColor(background),
+      }
+    },
+  },
+}
+</script>
+
+<style lang="stylus" scoped>
+.af_title {
+  margin-top 30px
+  margin-bottom 40px
+  text-align center
+  font-size 28px
+}
+
+.member-tags {
+  display flex
+  flex-wrap wrap
+  gap 10px
+  margin-top 20px
+  margin-bottom 40px
+
+  &.popup {
+    justify-content: center;
+    .member-tag {
+      content-visibility auto
+      contain-intrinsic-size auto 0.8rem
+    }
+  }
+
+  @media screen and (max-width: 1200px) {
+    &.popup {
+      .member-tag {
+        min-width 90%
+        min-height 0.9rem
+      }
+    }
+    &:not(.popup) {
+      flex-wrap nowrap
+      margin-bottom 30px
+      padding-bottom 10px
+      overflow-x auto
+      .member-tag {
+        min-width fit-content
+      }
+    }
+  }
+}
+
+.member-tag {
+  position relative
+  display flex
+  justify-content center
+  align-items center
+  flex-direction column
+  gap 5px
+  border-radius: 4PX;
+  min-height: 50px;
+  padding 5px 28px
+  cursor pointer
+  font-size 18px
+
+  &-main {
+    font-weight bold
+    font-size 20px
+  }
+
+  &-cnt {
+    margin-right 0.4rem
+    vertical-align: 0.1em
+  }
+
+  &-close {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+
+  &-check {
+    position: absolute;
+    top: -0.1rem;
+    right: -0.1rem;
+    font-size: 1.5em;
+    color: #5fe96b;
+  }
+}
+
+.illusts {
+  .cell {
+    padding: 10px 20px;
+  }
+
+  .num {
+    float: right;
+    font-size: 26px;
+    color: #888;
+  }
+
+  .card-box {
+    padding: 0 12px;
+    display: flex;
+    flex-direction: row;
+
+    .column {
+      width: 50%;
+
+      .image-card {
+        max-height: 360px;
+        margin: 4px 2px;
+      }
+    }
+  }
+}
+</style>
