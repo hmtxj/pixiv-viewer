@@ -3,8 +3,8 @@ import { LocalStorage } from '@/utils/storage'
 export const CURRENT_APP_VERSION = 'v1.31.8'
 export const isProduction = process.env.NODE_ENV === 'production'
 export const BASE_URL = process.env.BASE_URL
-export const DEF_HIBIAPI_MAIN = process.env.VUE_APP_DEF_HIBIAPI_MAIN
-export const DEF_PXIMG_MAIN = process.env.VUE_APP_DEF_PXIMG_MAIN
+export const DEF_HIBIAPI_MAIN = process.env.VUE_APP_DEF_HIBIAPI_MAIN || 'https://api.cocomi.eu.org/api/pixiv'
+export const DEF_PXIMG_MAIN = process.env.VUE_APP_DEF_PXIMG_MAIN || 'i.pixiv.re'
 export const DEF_API_PROXY = process.env.VUE_APP_DEF_APP_API_PROXY
 export const PXIMG_PROXYS = process.env.VUE_APP_PXIMG_PROXYS || ''
 export const HIBIAPI_ALTS = process.env.VUE_APP_HIBIAPI_ALTS || ''
