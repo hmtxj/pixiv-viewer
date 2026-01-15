@@ -3,17 +3,18 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm and git
+RUN npm install -g pnpm && apk add --no-cache git
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Clone from GitHub
+RUN git clone https://github.com/hmtxj/pixiv-viewer.git .
+
+# Set environment variables for build (Pixiv API configuration)
+ENV VUE_APP_DEF_HIBIAPI_MAIN=https://api.obfs.dev/api/pixiv
+ENV VUE_APP_DEF_PXIMG_MAIN=i.pixiv.re
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
-
-# Copy source code
-COPY . .
 
 # Build the application
 RUN pnpm run build
