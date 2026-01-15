@@ -128,49 +128,27 @@ export default {
 
       window.umami?.track(`set_${name}_switch_${checked}`)
 
-      if (checked) {
-        Dialog.confirm({
-          message: this.$t('display.confirm', [name]),
-          confirmButtonColor: 'black',
-          cancelButtonColor: '#1989fa',
-          closeOnPopstate: true,
-          cancelButtonText: this.$t('common.cancel'),
-          confirmButtonText: this.$t('common.confirm'),
-        })
-          .then(() => {
-            if (type === 1) {
-              this.currentContentSetting.r18 = checked
-              LocalStorage.set('PXV_NSFW_ON', this.isLoggedIn ? 0 : 1)
-            }
-            if (type === 2) {
-              this.currentContentSetting.r18g = checked
-              setTimeout(() => {
-                Dialog.alert({
-                  message: this.$t('display.confirm_g', [name]),
-                  confirmButtonText: this.$t('common.confirm'),
-                }).then(() => {
-                  location.reload()
-                })
-              }, 200)
-              LocalStorage.set('PXV_NSFW_ON', this.isLoggedIn ? 0 : 1)
-            }
-            this.saveSwitchValues()
-            type === 1 && setTimeout(() => {
-              location.reload()
-            }, 200)
-          })
-          .catch(() => {
-            console.log('操作取消')
-          })
-      } else {
-        LocalStorage.remove('PXV_NSFW_ON')
-        if (type === 1) this.currentContentSetting.r18 = checked
-        if (type === 2) this.currentContentSetting.r18g = checked
-        this.saveSwitchValues()
-        setTimeout(() => {
-          location.reload()
-        }, 200)
+      // 直接启用/禁用 R18，无需确认
+      if (type === 1) {
+        this.currentContentSetting.r18 = checked
+        if (checked) {
+          LocalStorage.set('PXV_NSFW_ON', this.isLoggedIn ? 0 : 1)
+        } else {
+          LocalStorage.remove('PXV_NSFW_ON')
+        }
       }
+      if (type === 2) {
+        this.currentContentSetting.r18g = checked
+        if (checked) {
+          LocalStorage.set('PXV_NSFW_ON', this.isLoggedIn ? 0 : 1)
+        } else {
+          LocalStorage.remove('PXV_NSFW_ON')
+        }
+      }
+      this.saveSwitchValues()
+      setTimeout(() => {
+        location.reload()
+      }, 200)
     },
   },
 }
